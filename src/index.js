@@ -13,7 +13,9 @@ const cors = require("cors");
 const dbUrl = `mongodb://public:no-more-secrets1@ds141248.mlab.com:41248/codesandbox`;
 const db = require("monk")(dbUrl);
 const todos = db.create("todos");
-todos.createIndex({ text: "text" });
+todos.createIndex({
+  text: "text"
+});
 
 app.use(morgan("dev"));
 
@@ -31,15 +33,25 @@ app
       .catch(next);
   })
   .post("/todo", (req, res, next) => {
-    const { text, priority, completed } = req.body;
+    const {
+      text,
+      priority,
+      completed,
+      uid
+    } = req.body;
     if (
-      (typeof text === "string" &&
+      (typeof text === "string" && typeof uid === 'number' &&
         typeof parseInt(priority, 10) === "number" &&
         typeof completed === "boolean") ||
-      req.body.length > 3
+      req.body.length === 4
     ) {
       todos
-        .insert({ text, priority, completed })
+        .insert({
+          uid,
+          text,
+          priority,
+          completed
+        })
         .then(doc => {
           return res.json(doc);
         })
@@ -53,15 +65,30 @@ app
   });
 
 app.get("/todos/search", (req, res, next) => {
-  const { text, priority, completed } = req.query;
+  const {
+    text,
+    priority,
+    completed
+  } = req.query;
 
   if (text && priority && completed) {
     todos
       .find({
-        $and: [
-          { $text: { $search: text } },
-          { priority: { $eq: parseInt(priority, 10) } },
-          { completed: { $in: [JSON.parse(completed)] } }
+        $and: [{
+            $text: {
+              $search: text
+            }
+          },
+          {
+            priority: {
+              $eq: parseInt(priority, 10)
+            }
+          },
+          {
+            completed: {
+              $in: [JSON.parse(completed)]
+            }
+          }
         ]
       })
       .then(docs => {
@@ -71,9 +98,16 @@ app.get("/todos/search", (req, res, next) => {
   } else if (completed && priority) {
     todos
       .find({
-        $and: [
-          { priority: { $eq: parseInt(priority, 10) } },
-          { completed: { $in: [JSON.parse(completed)] } }
+        $and: [{
+            priority: {
+              $eq: parseInt(priority, 10)
+            }
+          },
+          {
+            completed: {
+              $in: [JSON.parse(completed)]
+            }
+          }
         ]
       })
       .then(docs => {
@@ -83,9 +117,16 @@ app.get("/todos/search", (req, res, next) => {
   } else if (text && priority) {
     todos
       .find({
-        $and: [
-          { priority: { $eq: parseInt(priority, 10) } },
-          { $text: { $search: text } }
+        $and: [{
+            priority: {
+              $eq: parseInt(priority, 10)
+            }
+          },
+          {
+            $text: {
+              $search: text
+            }
+          }
         ]
       })
       .then(docs => {
@@ -95,9 +136,16 @@ app.get("/todos/search", (req, res, next) => {
   } else if (text && completed) {
     todos
       .find({
-        $and: [
-          { completed: { $in: [JSON.parse(completed)] } },
-          { $text: { $search: text } }
+        $and: [{
+            completed: {
+              $in: [JSON.parse(completed)]
+            }
+          },
+          {
+            $text: {
+              $search: text
+            }
+          }
         ]
       })
       .then(docs => {
@@ -106,7 +154,11 @@ app.get("/todos/search", (req, res, next) => {
       .catch(next);
   } else if (priority) {
     todos
-      .find({ priority: { $eq: parseInt(priority, 10) } })
+      .find({
+        priority: {
+          $eq: parseInt(priority, 10)
+        }
+      })
       .then(docs => {
         return res.json(docs);
       })
@@ -114,7 +166,9 @@ app.get("/todos/search", (req, res, next) => {
   } else if (completed) {
     todos
       .find({
-        completed: { $in: [JSON.parse(completed)] }
+        completed: {
+          $in: [JSON.parse(completed)]
+        }
       })
       .then(docs => {
         return res.json(docs);
@@ -122,7 +176,11 @@ app.get("/todos/search", (req, res, next) => {
       .catch(next);
   } else {
     todos
-      .find({ $text: { $search: text } })
+      .find({
+        $text: {
+          $search: text
+        }
+      })
       .then(docs => {
         return res.json(docs);
       })
@@ -130,12 +188,26 @@ app.get("/todos/search", (req, res, next) => {
   }
 });
 
-app.put("/todo/:id", (req, res, next) => {
-  const { id } = req.params;
-  const { text, completed, priority } = req.body;
+app.put("/todo/:uid", (req, res, next) => {
+  const {
+    uid
+  } = req.params;
+  const {
+    text,
+    completed,
+    priority
+  } = req.body;
   if (text && typeof completed === "boolean" && priority) {
     todos
-      .findOneAndUpdate({ _id: id }, { $set: { text, completed, priority } })
+      .findOneAndUpdate({
+        uid: parseFloat(uid)
+      }, {
+        $set: {
+          text,
+          completed,
+          priority
+        }
+      })
       .then(updatedDoc => {
         return res.json(updatedDoc);
       })
@@ -148,11 +220,16 @@ app.put("/todo/:id", (req, res, next) => {
   }
 });
 
-app.delete("/todo/:id", (req, res, next) => {
-  const { id } = req.params;
+
+app.delete("/todo/:uid", (req, res, next) => {
+  const {
+    uid
+  } = req.params;
 
   todos
-    .findOneAndDelete({ _id: id })
+    .findOneAndDelete({
+      uid: parseFloat(uid)
+    })
     .then(doc => {
       return res.json(doc);
     })
